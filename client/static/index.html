@@ -1,0 +1,96 @@
+<html>
+	<head> </head>
+	<style>
+        .container {
+            max-width: 500px;
+            width: 100%;
+            margin: 0px auto;
+            padding: 0.5em;
+            background-color: #ccc;
+        }
+        .inputContainer {
+            display: flex
+        }
+
+        input {
+            width: 100%;
+        }
+
+        h4 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        #logs {
+            width: 100%;
+        }
+        #logs span {
+            display: block;
+            background-color: #fff;
+            width: 100%;
+            line-height: 1.5em;
+            padding: 0px 0.2em;
+            box-sizing: border-box;
+        }
+    </style>
+	<body>
+        <div class="container">
+            <div class="inputContainer">
+                <input id="input"></input>
+                <button id="send">SEND</button>
+            </div>
+            <h4> Logs: </h4>
+            <div id="logs">
+            <div>
+        </div>
+
+        <script>
+            const urlSearchParams = new URLSearchParams(window.location.search);
+            const ws = new WebSocket(urlSearchParams.get("endpoint"))
+
+            addLog("connect attempt")
+
+
+            ws.onmessage = (msg) => {
+                addLog(`message recieved: "${msg.data}"`, msg)
+            }
+
+            ws.onopen = () => {
+                addLog("connected")
+            }
+
+            ws.onclose = (event) => {
+                addLog("socket closed", event)
+            }
+
+            ws.onerror = (err) => {
+                addLog("connect failed", err)
+            }
+
+            document.getElementById('send').onclick = () => {
+                const input = document.getElementById('input')
+                const msg = input.value
+
+                input.value = ''
+
+                addLog(`message sent: "${msg}"`)
+
+                ws.send(msg)
+            }
+
+
+            function addLog(msg, data) {
+                console.log(msg)
+                if (typeof data !== "undefined") {
+                    console.log(data)
+                }
+
+                document.getElementById("logs");
+                const span = document.createElement("span");
+                span.innerHTML = msg
+                logs.appendChild(span)
+            }
+
+        </script>
+	</body>
+</html>
