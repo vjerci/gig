@@ -1,0 +1,49 @@
+version: "3.8"
+services:
+  publish:
+    build: .
+    environment:
+      - RABBIT=amqp://myuser:mypassword@rabbit:5672/
+      - RABBIT_QUEUE=gig
+      - HTTP_PORT=8080
+    ports:
+      - 8080:8080
+    command: /bin/ash -c './wait-for-it.sh http://rabbit:15672/ && go run pub/main.go'
+
+  subscribe:
+    build: .
+    environment:
+      - RABBIT=amqp://myuser:mypassword@rabbit:5672/
+      - RABBIT_QUEUE=gig
+      - HTTP_PORT=8081
+    ports:
+      - 8081:8081
+    command: /bin/ash -c './wait-for-it.sh http://rabbit:15672/ && go run sub/main.go'
+
+  rabbit:
+    image: "rabbitmq:3.9.8-management"
+    environment:
+      - RABBITMQ_DEFAULT_USER=myuser
+      - RABBITMQ_DEFAULT_PASS=mypassword
+
+  e2e_test:
+    build: .
+    environment:
+      - PUB_ENDPOINT=ws://publish:8080/ws
+      - SUB_ENDPOINT=ws://subscribe:8081/ws
+    command: /bin/ash -c './wait-for-it.sh http://publish:8080/healthcheck http://subscribe:8081/healthcheck && go test e2e/e2e_test.go -v -timeout 2s'
+
+  client:
+    build: .
+    environment:
+      - HTTP_PORT=8082
+    ports:
+      - 8082:8082
+    command: go run client/main.go
+
+  unit_test:
+    build: .
+    environment:
+      - PUB_ENDPOINT=ws://publish:8080/ws
+      - SUB_ENDPOINT=ws://subscribe:8081/ws
+    command: /bin/ash ./unit-test.sh

@@ -1,0 +1,1 @@
+go test $(go list ./... | grep -v '/e2e\|/client\|settings') -count=1 -v -timeout 2s
