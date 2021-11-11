@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -47,9 +48,16 @@ func TestWsHandler(t *testing.T) {
 	}
 
 	queueConnection = channel
-	wsHandler(ws)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	if channel.publishedMsg != msg {
-		t.Errorf("want publish msg to be same that was pushed trough websocket %s %s", channel.publishedMsg, msg)
-	}
+	go func() {
+		wsHandler(ctx, ws)
+
+		if channel.publishedMsg != msg {
+			t.Errorf("want publish msg to be same that was pushed trough websocket %s %s", channel.publishedMsg, msg)
+		}
+	}()
+
+	cancel()
+
 }

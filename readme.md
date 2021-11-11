@@ -42,8 +42,6 @@ both pub and sub microservices support websocket `/ws`, `/healthcheck` and `/shu
 
 #### Improvements
 
-I wanted to implement graceful closing of sockets upon visiting shutdown route but it seemed like an overkill.
-
 CI/CD could be built with steps:
 
     1. run unit tests

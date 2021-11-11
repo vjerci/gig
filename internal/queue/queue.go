@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"log"
 
 	"github.com/google/uuid"
@@ -26,10 +27,12 @@ type Store struct {
 	close       chan bool
 	unsubscribe chan *Subscriber
 
+	ctx context.Context
+
 	subscribers map[string]*Subscriber
 }
 
-func New(queueName string) *Store {
+func New(ctx context.Context, queueName string) *Store {
 	conn, err := amqp.Dial(settings.Rabbit.Address)
 	if err != nil {
 		log.Fatalf("fail to establish Queue to rabbit %e", err)
@@ -61,13 +64,13 @@ func New(queueName string) *Store {
 		close:       make(chan bool),
 		unsubscribe: make(chan *Subscriber),
 		subscribers: make(map[string]*Subscriber),
+		ctx:         ctx,
 	}
 
 	return Queue
 }
 
 func (store *Store) Shutdown() {
-	store.close <- true
 	store.channel.Close()
 	store.conn.Close()
 }
@@ -108,7 +111,7 @@ func (store *Store) Read() {
 
 	for {
 		select {
-		case <-store.close:
+		case <-store.ctx.Done():
 			return
 		case subscriber := <-store.unsubscribe:
 			delete(store.subscribers, subscriber.id)

@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"testing"
 
 	"github.com/streadway/amqp"
@@ -92,11 +93,15 @@ func TestRead(t *testing.T) {
 
 	msg := "hello"
 
+	ctx, closeStore := context.WithCancel(context.Background())
+	defer closeStore()
+
 	store := &Store{
 		conn:        mockConnection,
 		channel:     mockChannel,
 		subscribers: make(map[string]*Subscriber),
 		close:       make(chan bool, 1),
+		ctx:         ctx,
 	}
 
 	sub1 := store.Subscribe()
@@ -134,7 +139,6 @@ func TestRead(t *testing.T) {
 	<-bothRead
 	<-bothRead
 
-	store.close <- true
 }
 
 func TestUnsubscribe(t *testing.T) {
@@ -143,12 +147,16 @@ func TestUnsubscribe(t *testing.T) {
 		MessageChan: make(chan amqp.Delivery),
 	}
 
+	ctx, closeStore := context.WithCancel(context.Background())
+	defer closeStore()
+
 	store := &Store{
 		conn:        mockConnection,
 		channel:     mockChannel,
 		subscribers: make(map[string]*Subscriber),
 		unsubscribe: make(chan *Subscriber),
 		close:       make(chan bool, 1),
+		ctx:         ctx,
 	}
 
 	sub1 := store.Subscribe()
@@ -160,7 +168,7 @@ func TestUnsubscribe(t *testing.T) {
 
 	sub1.Unsubscribe()
 
-	store.close <- true
+	closeStore()
 
 	subNumber := len(store.subscribers)
 	if subNumber != 0 {

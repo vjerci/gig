@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -23,37 +25,39 @@ var queueConnection Queue
 func main() {
 	settings.Load()
 
-	queueConnection = queue.New(settings.Rabbit.Queue)
+	ctx := context.Background()
+	ctx, cancelWS := context.WithCancel(ctx)
+
+	queueConnection = queue.New(ctx, settings.Rabbit.Queue)
 	go queueConnection.Read()
 
 	shutdownChannel := make(chan os.Signal, 1)
 
-	httpEndpoint := server.New(settings.Http.Address, shutdownChannel, wsHandler)
+	httpEndpoint := server.New(ctx, settings.Http.Address, shutdownChannel, wsHandler)
 
 	signal.Notify(shutdownChannel, os.Interrupt, syscall.SIGTERM)
 
 	<-shutdownChannel
 	httpEndpoint.Shutdown()
+	cancelWS()
 	queueConnection.Shutdown()
 }
 
-func wsHandler(conn server.Websocket) {
+func wsHandler(ctx context.Context, conn server.Websocket) {
 	subscriber := queueConnection.Subscribe()
 
-	socketClose := make(chan bool, 1)
-
+	readCtx, readFailed := context.WithCancel(ctx)
 	go func() {
 		_, _, err := conn.ReadMessage()
-		if err != nil {
-			conn.Close()
+		if err != nil && !errors.Is(err, websocket.ErrCloseSent) {
 			subscriber.Unsubscribe()
-			socketClose <- true
+			readFailed()
 		}
 	}()
 
 	for {
 		select {
-		case <-socketClose:
+		case <-readCtx.Done():
 			return
 		case msg := <-subscriber.Channel():
 			err := conn.WriteMessage(websocket.TextMessage, []byte(msg))

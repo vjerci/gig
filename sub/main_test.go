@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -71,7 +72,7 @@ func TestWsHandler(t *testing.T) {
 	queueConnection = channel
 
 	go func() {
-		wsHandler(ws)
+		wsHandler(context.TODO(), ws)
 		finished <- true
 	}()
 
